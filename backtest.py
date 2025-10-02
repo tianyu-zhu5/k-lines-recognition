@@ -133,6 +133,57 @@ class BacktestEngine:
         # 生成报告
         return self._generate_report()
 
+    def _apply_filters(self, df: pd.DataFrame, signal_idx: int, pattern_name: str) -> bool:
+        """
+        应用过滤器，判断信号是否有效
+
+        Args:
+            df: 股票数据DataFrame
+            signal_idx: 信号位置索引
+            pattern_name: 形态名称
+
+        Returns:
+            True: 通过过滤，False: 被过滤
+        """
+        # 只对黑三鸦应用过滤器
+        if pattern_name != "黑三鸦":
+            return True
+
+        from indicators import (
+            calculate_drawdown,
+            calculate_rsi,
+            is_reversal_candle
+        )
+
+        config = self.config.filter_config
+
+        # 过滤器1: 累计跌幅过滤
+        if config.enable_drawdown_filter:
+            # 计算到信号位置为止的回撤
+            drawdown = calculate_drawdown(df[:signal_idx + 1], config.drawdown_window)
+            if drawdown.iloc[-1] < config.min_drawdown_pct:
+                logger.debug(f"过滤：回撤不足 {drawdown.iloc[-1]*100:.1f}% < {config.min_drawdown_pct*100:.1f}%")
+                return False
+
+        # 过滤器2: RSI超卖过滤
+        if config.enable_rsi_filter:
+            rsi = calculate_rsi(df[:signal_idx + 1], config.rsi_period)
+            if rsi.iloc[-1] >= config.rsi_threshold:
+                logger.debug(f"过滤：RSI未超卖 {rsi.iloc[-1]:.1f} >= {config.rsi_threshold:.1f}")
+                return False
+
+        # 过滤器3: 反转K线确认过滤
+        if config.enable_reversal_filter:
+            # 检查黑三鸦后第一根K线（即买入前一天，signal_idx+1）
+            # 因为黑三鸦买入延迟是2天，所以signal_idx+1就是买入前一天
+            if signal_idx + 1 < len(df):
+                next_candle = df.iloc[signal_idx + 1]
+                if not is_reversal_candle(next_candle):
+                    logger.debug(f"过滤：无反转K线确认")
+                    return False
+
+        return True  # 通过所有过滤器
+
     def _collect_signals(self, stock_codes: List[str]) -> List[Dict]:
         """收集所有股票的交易信号"""
         all_signals = []
@@ -178,6 +229,10 @@ class BacktestEngine:
                     # 如果是黑三鸦在冷却期内，跳过
                     if pattern.pattern_name == "黑三鸦" and pd.to_datetime(signal_date) in black_crow_cooldown_dates:
                         continue
+
+                    # 【新增】应用过滤器
+                    if not self._apply_filters(df, signal_idx, pattern.pattern_name):
+                        continue  # 被过滤，跳过此信号
 
                     # 确定买入延迟天数：黑三鸦为2天，其他形态为1天
                     buy_delay = 2 if pattern.pattern_name == "黑三鸦" else 1
