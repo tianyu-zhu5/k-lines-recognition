@@ -227,3 +227,124 @@ def check_volume_expand(df: pd.DataFrame, candle_idx: int,
 
     # 当前成交量超过平均量的threshold倍即为放量
     return current_volume > threshold * avg_volume
+
+
+# ==================== 卖出信号相关指标 ====================
+
+def check_rsi_overbought(df: pd.DataFrame, candle_idx: int,
+                         threshold: float = 70, period: int = 14) -> bool:
+    """
+    检查RSI是否超买
+
+    Args:
+        df: 股票数据DataFrame
+        candle_idx: K线索引位置
+        threshold: RSI超买阈值（默认70）
+        period: RSI计算周期
+
+    Returns:
+        True: 超买，False: 未超买
+    """
+    if candle_idx < period:
+        return False
+
+    # 计算RSI
+    rsi = calculate_rsi(df[:candle_idx + 1], period)
+    current_rsi = rsi.iloc[-1]
+
+    # RSI超过阈值即为超买
+    return current_rsi > threshold
+
+
+def calculate_trailing_stop_price(df: pd.DataFrame, buy_price: float,
+                                   buy_idx: int, current_idx: int,
+                                   trail_pct: float = 0.10) -> float:
+    """
+    计算移动止损价格
+
+    Args:
+        df: 股票数据DataFrame
+        buy_price: 买入价格
+        buy_idx: 买入位置索引
+        current_idx: 当前位置索引
+        trail_pct: 回撤比例（默认10%，即从最高点回撤10%触发）
+
+    Returns:
+        移动止损价格
+    """
+    # 计算买入后的最高价
+    if current_idx <= buy_idx:
+        return buy_price * (1 - trail_pct)
+
+    highest_price = df.loc[buy_idx:current_idx, 'high'].max()
+
+    # 移动止损价格 = 最高价 * (1 - 回撤比例)
+    trailing_stop = highest_price * (1 - trail_pct)
+
+    # 移动止损价格不能低于买入价
+    return max(trailing_stop, buy_price * (1 - trail_pct))
+
+
+def check_peak_reached(df: pd.DataFrame, candle_idx: int,
+                      lookback: int = 5) -> bool:
+    """
+    检查是否达到阶段性高点（用于判断是否应该卖出）
+
+    Args:
+        df: 股票数据DataFrame
+        candle_idx: 当前K线索引
+        lookback: 回看周期
+
+    Returns:
+        True: 达到阶段性高点，False: 未达到
+    """
+    if candle_idx < lookback or candle_idx >= len(df) - 1:
+        return False
+
+    current_high = df.iloc[candle_idx]['high']
+
+    # 检查前N根K线的最高价
+    prev_highs = df.iloc[candle_idx - lookback:candle_idx]['high']
+
+    # 检查后1根K线的最高价（需要有后续数据）
+    if candle_idx + 1 < len(df):
+        next_high = df.iloc[candle_idx + 1]['high']
+
+        # 当前高点高于前N根和后1根，说明是阶段性高点
+        return current_high >= prev_highs.max() and current_high > next_high
+
+    return False
+
+
+def check_volume_divergence(df: pd.DataFrame, candle_idx: int,
+                            lookback: int = 5) -> bool:
+    """
+    检查价量背离（价格新高但成交量萎缩）
+
+    Args:
+        df: 股票数据DataFrame
+        candle_idx: 当前K线索引
+        lookback: 回看周期
+
+    Returns:
+        True: 存在背离，False: 不存在背离
+    """
+    if candle_idx < lookback:
+        return False
+
+    # 获取最近N根K线
+    recent_data = df.iloc[candle_idx - lookback:candle_idx + 1]
+
+    # 当前价格是否创新高
+    current_high = df.iloc[candle_idx]['high']
+    is_new_high = current_high >= recent_data['high'].max()
+
+    if not is_new_high:
+        return False
+
+    # 当前成交量是否低于平均水平
+    current_volume = df.iloc[candle_idx]['volume']
+    avg_volume = recent_data['volume'].mean()
+
+    # 价格新高但成交量低于平均，存在背离
+    return current_volume < avg_volume * 0.8  # 低于平均量的80%
