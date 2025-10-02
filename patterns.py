@@ -93,11 +93,11 @@ class PatternRecognizer:
                 indices = recognizer["function"](df)
                 for idx in indices:
                     result = PatternResult(
-                        date=df.loc[idx, 'date'].strftime('%Y-%m-%d'),
+                        date=df.iloc[idx]['date'].strftime('%Y-%m-%d'),
                         index=idx,
                         pattern_name=recognizer["name"],
                         meaning=recognizer["meaning"],
-                        price=df.loc[idx, 'high'],  # 标注在最高价位置
+                        price=df.iloc[idx]['high'],  # 标注在最高价位置
                         category=recognizer["category"],
                         signal_type=recognizer["signal_type"],
                         strength=recognizer["strength"],
@@ -1480,11 +1480,11 @@ def recognize_patterns(df: pd.DataFrame, pattern_names: List[str] = None,
                 indices = rec["function"](df)
                 for idx in indices:
                     result = PatternResult(
-                        date=df.loc[idx, 'date'].strftime('%Y-%m-%d'),
+                        date=df.iloc[idx]['date'].strftime('%Y-%m-%d'),
                         index=idx,
                         pattern_name=rec["name"],
                         meaning=rec["meaning"],
-                        price=df.loc[idx, 'high'],
+                        price=df.iloc[idx]['high'],
                         category=rec["category"],
                         signal_type=rec["signal_type"],
                         strength=rec["strength"],

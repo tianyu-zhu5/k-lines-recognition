@@ -20,11 +20,29 @@ logger = logging.getLogger(__name__)
 
 # 页面配置
 st.set_page_config(
-    page_title="K线形态识别系统",
+    page_title="K线形态分析系统",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+
+# ==================== 页面选择 ====================
+
+# 在侧边栏顶部添加页面选择
+with st.sidebar:
+    page = st.radio(
+        "导航",
+        ["📊 形态识别", "🔬 回测系统"],
+        label_visibility="collapsed"
+    )
+    st.markdown("---")
+
+# 根据选择显示不同页面
+if page == "🔬 回测系统":
+    from backtest_page import render_backtest_page
+    render_backtest_page()
+    st.stop()  # 停止执行后面的形态识别页面代码
 
 
 # ==================== 初始化 ====================
