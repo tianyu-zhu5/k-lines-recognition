@@ -1,0 +1,82 @@
+{
+  "strategy_name": "黑三鸦底部反转策略",
+  "strategy_version": "v1.0",
+  "description": "基于黑三鸦K线形态的底部反转策略，配合RSI超卖和反转K线确认过滤",
+  "create_date": "2025-10-02",
+  "backtest_period": "2023-01-01 至 2025-09-19",
+  "stock_pool": "hs300.txt",
+
+  "backtest_config": {
+    "initial_capital": 300000,
+    "per_trade_amount": 10000,
+    "stop_loss_pct": 0.07,
+    "stop_profit_pct": 0.10,
+    "hold_days": 10,
+    "start_date": "2023-01-01",
+    "end_date": "2025-09-19",
+    "pattern_names": ["黑三鸦"]
+  },
+
+  "filter_config": {
+    "enable_drawdown_filter": false,
+    "min_drawdown_pct": 0.15,
+    "drawdown_window": 20,
+
+    "enable_rsi_filter": true,
+    "rsi_threshold": 30,
+    "rsi_period": 14,
+
+    "enable_reversal_filter": true
+  },
+
+  "trading_rules": {
+    "买入时机": "黑三鸦识别后第2个交易日开盘价",
+    "买入延迟": 2,
+    "冷却期": 2,
+    "买入条件": [
+      "识别到黑三鸦形态",
+      "RSI < 30（超卖）",
+      "黑三鸦后出现阳线或锤子线（反转确认）",
+      "不在冷却期内"
+    ],
+    "卖出条件优先级": [
+      "1. 跳空止损/止盈",
+      "2. 盘中止损（7%）",
+      "3. 盘中止盈（10%）",
+      "4. 持仓10天到期"
+    ]
+  },
+
+  "performance_metrics": {
+    "total_trades": 410,
+    "winning_trades": 191,
+    "losing_trades": 219,
+    "win_rate": 0.466,
+    "total_profit": -6214.69,
+    "total_return": -0.0207,
+    "avg_profit": -15.16,
+    "avg_profit_pct": -0.001,
+    "max_drawdown": 0.1235,
+    "sharpe_ratio": -0.09
+  },
+
+  "optimization_suggestions": [
+    "启用累计跌幅过滤器（15%回撤阈值）",
+    "测试5%止损 + 8%止盈组合",
+    "缩短持仓天数至5-7天",
+    "引入大盘趋势过滤",
+    "优化仓位管理（连续亏损减仓）"
+  ],
+
+  "适用场景": [
+    "市场经历大幅下跌后的底部区域",
+    "配合大盘趋势判断使用",
+    "短期波段交易（10天内）"
+  ],
+
+  "不适用场景": [
+    "趋势性下跌市场",
+    "市场系统性风险释放期间",
+    "缺乏明确底部信号时"
+  ]
+}
