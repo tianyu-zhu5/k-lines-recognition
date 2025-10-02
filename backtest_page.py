@@ -384,6 +384,77 @@ def render_backtest_page():
 
         st.markdown("---")
 
+        # 7. 黑三鸦过滤器设置
+        st.subheader("7️⃣ 黑三鸦过滤器")
+        st.info("📌 以下过滤器仅对黑三鸦形态生效，用于提高策略胜率")
+
+        # 过滤器1: 累计跌幅过滤
+        enable_drawdown = st.checkbox(
+            "启用累计跌幅过滤",
+            value=False,
+            help="只在股价从高点回撤一定幅度后买入"
+        )
+        if enable_drawdown:
+            col1, col2 = st.columns(2)
+            with col1:
+                min_drawdown = st.slider(
+                    "最小回撤(%)",
+                    min_value=5.0,
+                    max_value=30.0,
+                    value=15.0,
+                    step=1.0,
+                    help="股价需从近期高点回撤至少此幅度"
+                )
+            with col2:
+                drawdown_window = st.number_input(
+                    "回看天数",
+                    min_value=10,
+                    max_value=60,
+                    value=20,
+                    help="计算回撤的回看窗口期"
+                )
+        else:
+            min_drawdown = 15.0
+            drawdown_window = 20
+
+        # 过滤器2: RSI超卖过滤
+        enable_rsi = st.checkbox(
+            "启用RSI超卖过滤",
+            value=False,
+            help="只在RSI处于超卖区域时买入"
+        )
+        if enable_rsi:
+            col1, col2 = st.columns(2)
+            with col1:
+                rsi_threshold = st.slider(
+                    "RSI阈值",
+                    min_value=20.0,
+                    max_value=40.0,
+                    value=30.0,
+                    step=1.0,
+                    help="RSI需小于此值才买入"
+                )
+            with col2:
+                rsi_period = st.number_input(
+                    "RSI周期",
+                    min_value=7,
+                    max_value=21,
+                    value=14,
+                    help="RSI计算周期"
+                )
+        else:
+            rsi_threshold = 30.0
+            rsi_period = 14
+
+        # 过滤器3: 反转K线确认过滤
+        enable_reversal = st.checkbox(
+            "启用反转K线确认",
+            value=False,
+            help="等待黑三鸦后出现阳线或锤子线再买入"
+        )
+
+        st.markdown("---")
+
         # 运行回测按钮
         run_backtest = st.button(
             "🚀 开始回测",
@@ -421,6 +492,21 @@ def render_backtest_page():
                 st.error("❌ 股票池为空")
                 return
 
+        # 创建过滤器配置
+        from backtest import FilterConfig
+
+        filter_config = FilterConfig(
+            enable_drawdown_filter=enable_drawdown,
+            min_drawdown_pct=min_drawdown / 100 if enable_drawdown else 0.15,
+            drawdown_window=drawdown_window if enable_drawdown else 20,
+
+            enable_rsi_filter=enable_rsi,
+            rsi_threshold=rsi_threshold if enable_rsi else 30,
+            rsi_period=rsi_period if enable_rsi else 14,
+
+            enable_reversal_filter=enable_reversal
+        )
+
         # 创建回测配置
         config = BacktestConfig(
             initial_capital=initial_capital,
@@ -430,7 +516,8 @@ def render_backtest_page():
             hold_days=hold_days,
             start_date=start_date.strftime('%Y-%m-%d'),
             end_date=end_date.strftime('%Y-%m-%d'),
-            pattern_names=selected_patterns
+            pattern_names=selected_patterns,
+            filter_config=filter_config
         )
 
         # 运行回测
