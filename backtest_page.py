@@ -598,6 +598,41 @@ def render_backtest_results(results: dict, config: BacktestConfig):
             f"{results['avg_profit_pct']*100:.2f}%"
         )
 
+    # 过滤器效果展示
+    filter_cfg = config.filter_config
+    if filter_cfg.enable_drawdown_filter or filter_cfg.enable_rsi_filter or filter_cfg.enable_reversal_filter:
+        st.markdown("---")
+        st.header("🔍 过滤器效果")
+
+        # 显示启用的过滤器
+        filter_info = []
+        if filter_cfg.enable_drawdown_filter:
+            filter_info.append(
+                f"✅ **累计跌幅过滤**: 回撤 ≥ {filter_cfg.min_drawdown_pct*100:.0f}% (回看{filter_cfg.drawdown_window}天)"
+            )
+        if filter_cfg.enable_rsi_filter:
+            filter_info.append(
+                f"✅ **RSI超卖过滤**: RSI < {filter_cfg.rsi_threshold:.0f} (周期{filter_cfg.rsi_period})"
+            )
+        if filter_cfg.enable_reversal_filter:
+            filter_info.append("✅ **反转K线确认**: 需出现阳线或锤子线")
+
+        st.info("**启用的过滤器**：\n\n" + "\n\n".join(filter_info))
+
+        # 显示过滤效果（如果有数据）
+        if 'signals_before_filter' in results and 'signals_after_filter' in results:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("过滤前信号", results['signals_before_filter'])
+            with col2:
+                st.metric("过滤后信号", results['signals_after_filter'])
+            with col3:
+                if results['signals_before_filter'] > 0:
+                    filter_rate = (1 - results['signals_after_filter'] / results['signals_before_filter']) * 100
+                    st.metric("过滤率", f"{filter_rate:.1f}%")
+                else:
+                    st.metric("过滤率", "0.0%")
+
     st.markdown("---")
 
     # 2. 资金曲线
