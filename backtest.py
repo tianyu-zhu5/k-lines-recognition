@@ -6,7 +6,7 @@
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import logging
 
@@ -34,6 +34,23 @@ class Trade:
 
 
 @dataclass
+class FilterConfig:
+    """过滤器配置（仅对黑三鸦生效）"""
+    # 累计跌幅过滤
+    enable_drawdown_filter: bool = False      # 是否启用累计跌幅过滤
+    min_drawdown_pct: float = 0.15            # 最小回撤比例（15%）
+    drawdown_window: int = 20                 # 回看窗口期（交易日）
+
+    # RSI超卖过滤
+    enable_rsi_filter: bool = False           # 是否启用RSI过滤
+    rsi_threshold: float = 30                 # RSI阈值（小于此值才买入）
+    rsi_period: int = 14                      # RSI计算周期
+
+    # 反转K线确认过滤
+    enable_reversal_filter: bool = False      # 是否启用反转K线确认
+
+
+@dataclass
 class BacktestConfig:
     """回测配置"""
     initial_capital: float = 100000      # 初始资金
@@ -44,6 +61,7 @@ class BacktestConfig:
     start_date: Optional[str] = None     # 回测开始日期
     end_date: Optional[str] = None       # 回测结束日期
     pattern_names: List[str] = None      # 要回测的形态名称列表
+    filter_config: FilterConfig = field(default_factory=FilterConfig)  # 过滤器配置
 
 
 class BacktestEngine:
